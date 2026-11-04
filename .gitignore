@@ -4,6 +4,9 @@ alu
 RegFile
 fsm
 lab2/lab2/
+lab3/mul-project/
+lab3/div-project/
+lab3/float_add-project/
 
 src-code/
 
