@@ -1,5 +1,7 @@
 `timescale 1ns / 1ps
 
+`define TEST_MORE
+
 module socTest_tb;
     reg clk;
     reg rst;

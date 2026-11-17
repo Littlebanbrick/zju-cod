@@ -55,6 +55,10 @@ module SCPU_ctrl(
                     10'b0000000101: ALU_Control = `ALU_SRL;
                     10'b0000000110: ALU_Control = `ALU_OR;
                     10'b0000000111: ALU_Control = `ALU_AND;
+                    // 4.3 sltu, sra, sll
+                    10'b0000000011: ALU_Control = `ALU_SLTU;
+                    10'b0100000101: ALU_Control = `ALU_SRA;
+                    10'b0000000001: ALU_Control = `ALU_SLL;
                     default:        ill_instr = 1'b1;
                 endcase
             end
@@ -70,7 +74,17 @@ module SCPU_ctrl(
                     3'b100:         ALU_Control = `ALU_XOR;
                     3'b110:         ALU_Control = `ALU_OR;
                     3'b111:         ALU_Control = `ALU_AND;
-                    3'b101:         ALU_Control = `ALU_SRL;
+                    // 4.3 sltiu, srai, slli （立即数版本）
+                    // 比较 Fun7，0000000的是 srli，0100000的是 srai
+                    3'b101: begin
+                        case (Fun7)
+                            7'b0000000: ALU_Control = `ALU_SRL;
+                            7'b0100000: ALU_Control = `ALU_SRA;
+                            default: ill_instr = 1'b1;
+                        endcase
+                    end
+                    3'b011:         ALU_Control = `ALU_SLTU;
+                    3'b001:         ALU_Control = `ALU_SLL;
                     default:        ill_instr = 1'b1;
                 endcase
             end
@@ -91,13 +105,13 @@ module SCPU_ctrl(
                 ALU_Control = `ALU_ADD;
             end
 
-            `OP_BRANCH: begin                 // beq（4.3 加 bne）
+            `OP_BRANCH: begin                 // beq and bne
                 ImmSel      = `IMM_B;
                 ALUSrc_B    = 1'b0;
                 ALU_Control = `ALU_SUB;       // 相减，用 zero 判断
                 case (Fun3)
                     3'b000: Branch  = 1'b1;
-                    3'b001: BranchN = 1'b1;   // 4.3 的 bne
+                    3'b001: BranchN = 1'b1;
                     default: ill_instr = 1'b1;
                 endcase
             end
@@ -109,8 +123,19 @@ module SCPU_ctrl(
                 RegWrite    = 1'b1;
             end
             
-            `OP_JALR:    ; // lab4.3
-            `OP_LUI:     ; // lab4.3
+            `OP_JALR: begin
+                ImmSel      = `IMM_I;
+                Jump        = `JUMP_JALR;
+                MemtoReg    = `MEM_PC4;       // 写回 PC+4
+                RegWrite    = 1'b1;           // 写 rd
+            end
+
+            `OP_LUI: begin                    // Load Upper Immediate: 把 20 位立即数装进寄存器的高 20 位，低 12 位补 0
+                ImmSel      = `IMM_U;
+                MemtoReg    = `MEM_IMM;
+                RegWrite    = 1'b1;
+            end
+
             `OP_SYSTEM:  ; // lab4.4
             default: ill_instr = 1'b1;
         endcase
