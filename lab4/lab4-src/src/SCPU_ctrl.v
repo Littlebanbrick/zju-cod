@@ -5,22 +5,22 @@ module SCPU_ctrl(
     input  wire [6:0]  Opcode,
     input  wire [2:0]  Fun3,
     input  wire [6:0]  Fun7,
-    input  wire [4:0]  Rs1,
-    input  wire [4:0]  Rd,
-    input  wire        MIO_ready,
+    input  wire [4:0]  Rs1,         // rs1 寄存器编号
+    input  wire [4:0]  Rd,          // rd 寄存器编号
+    input  wire        MIO_ready,   // ？？？
 
-    output reg  [2:0]  ImmSel,
-    output reg         ALUSrc_B,
-    output reg  [1:0]  MemtoReg,
-    output reg  [1:0]  Jump,
-    output reg         Branch,
-    output reg         BranchN,
-    output reg         RegWrite,
-    output reg         MemRW,
-    output reg  [3:0]  ALU_Control,
+    output reg  [2:0]  ImmSel,      // 立即数类型
+    output reg         ALUSrc_B,    // ALU 的 B 是 R2 还是立即数
+    output reg  [1:0]  MemtoReg,    //
+    output reg  [1:0]  Jump,        //
+    output reg         Branch,      //
+    output reg         BranchN,     //
+    output reg         RegWrite,    // 寄存器写使能
+    output reg         MemRW,       // RAM 写使能
+    output reg  [3:0]  ALU_Control, // ALU 哪种运算
     output reg         ecall,
     output reg         mret,
-    output reg         ill_instr,
+    output reg         ill_instr,   // 对系统指令之外的编码拉高 ill_instr
     output reg         CPU_MIO
 );
 
@@ -41,6 +41,79 @@ module SCPU_ctrl(
         mret      = 1'b0;
         ill_instr = 1'b0;
         CPU_MIO   = 1'b0;
+
+        case (Opcode)
+            `OP_ALU: begin          // R 型，内部还要看 func7, func3
+                RegWrite  = 1'b1;         // 要写回
+                ALUSrc_B  = 1'b0;         // B 口用 rs2
+                MemtoReg  = `MEM_ALU;     // 写回 ALU 结果
+                case ({Fun7, Fun3})
+                    10'b0000000000: ALU_Control = `ALU_ADD;
+                    10'b0100000000: ALU_Control = `ALU_SUB;
+                    10'b0000000010: ALU_Control = `ALU_SLT;
+                    10'b0000000100: ALU_Control = `ALU_XOR;
+                    10'b0000000101: ALU_Control = `ALU_SRL;
+                    10'b0000000110: ALU_Control = `ALU_OR;
+                    10'b0000000111: ALU_Control = `ALU_AND;
+                    default:        ill_instr = 1'b1;
+                endcase
+            end
+
+            `OP_ALU_IMM: begin      // I 型，内部还要看 func3
+                RegWrite  = 1'b1;         // 要写回
+                ALUSrc_B  = 1'b1;         // B 口用立即数
+                ImmSel    = `IMM_I;
+                MemtoReg  = `MEM_ALU;
+                case (Fun3) 
+                    3'b000:         ALU_Control = `ALU_ADD;
+                    3'b010:         ALU_Control = `ALU_SLT;
+                    3'b100:         ALU_Control = `ALU_XOR;
+                    3'b110:         ALU_Control = `ALU_OR;
+                    3'b111:         ALU_Control = `ALU_AND;
+                    3'b101:         ALU_Control = `ALU_SRL;
+                    default:        ill_instr = 1'b1;
+                endcase
+            end
+
+            `OP_LOAD: begin                   // lw
+                ImmSel      = `IMM_I;
+                ALUSrc_B    = 1'b1;
+                MemtoReg    = `MEM_RAM;       // 写回 RAM 读回的数据
+                RegWrite    = 1'b1;
+                ALU_Control = `ALU_ADD;       // rs1 + imm = 地址
+            end
+
+            `OP_STORE: begin                  // sw
+                ImmSel      = `IMM_S;
+                ALUSrc_B    = 1'b1;
+                MemRW       = 1'b1;           // 写内存
+                RegWrite    = 1'b0;
+                ALU_Control = `ALU_ADD;
+            end
+
+            `OP_BRANCH: begin                 // beq（4.3 加 bne）
+                ImmSel      = `IMM_B;
+                ALUSrc_B    = 1'b0;
+                ALU_Control = `ALU_SUB;       // 相减，用 zero 判断
+                case (Fun3)
+                    3'b000: Branch  = 1'b1;
+                    3'b001: BranchN = 1'b1;   // 4.3 的 bne
+                    default: ill_instr = 1'b1;
+                endcase
+            end
+
+            `OP_JAL: begin                    // jal
+                ImmSel      = `IMM_J;
+                Jump        = `JUMP_JAL;
+                MemtoReg    = `MEM_PC4;       // 写回 PC+4
+                RegWrite    = 1'b1;
+            end
+            
+            `OP_JALR:    ; // lab4.3
+            `OP_LUI:     ; // lab4.3
+            `OP_SYSTEM:  ; // lab4.4
+            default: ill_instr = 1'b1;
+        endcase
     end
 
 endmodule
