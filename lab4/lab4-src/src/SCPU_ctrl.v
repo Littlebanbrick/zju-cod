@@ -136,7 +136,15 @@ module SCPU_ctrl(
                 RegWrite    = 1'b1;
             end
 
-            `OP_SYSTEM:  ; // lab4.4
+            `OP_SYSTEM: begin
+                if (Fun7 == 7'b0000000)          // ecall
+                    ecall = 1'b1;
+                else if (Fun7 == 7'b0011000)     // mret
+                    mret  = 1'b1;
+                else
+                    ill_instr = 1'b1;
+            end
+
             default: ill_instr = 1'b1;
         endcase
     end

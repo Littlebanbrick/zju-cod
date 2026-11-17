@@ -1,6 +1,6 @@
 `timescale 1ns / 1ps
 
-`define TEST_MORE
+`define TEST_INT
 
 module socTest_tb;
     reg clk;

@@ -119,39 +119,32 @@ module DataPath(
     assign ALU_out    = alu_res;
     // 不用再 assign debug_regs = ??? 了
 
-
-
-
-
-
-
-
-
-
     /* TODO(Lab4-4): 接入 RV_Int，并完成 trap/mret 的下一 PC 选择。 */
     wire [31:0] mepc, mtvec;
     wire        trap;
+    wire        int_pulse;
 
-    assign mepc       = 32'b0;
-    assign mtvec      = 32'b0;
-    assign trap       = 1'b0;
+    RV_Int u_rint (
+        .clk       (clk),
+        .rst       (rst),
+        .INT0      (INT0),
+        .ecall     (ecall),
+        .mret      (mret),
+        .ill_instr (ill_instr),
+        .pc_plus4  (PC4),          // PC+4
+        .mepc      (mepc),
+        .mtvec     (mtvec),
+        .int_pulse (int_pulse),
+        .trap      (trap)
+    );
 
     assign mepc_o     = 32'b0;
     assign mtvec_o    = 32'b0;
     assign trap_o     = 1'b0;
 
-
-
-
-
-
-
-
-
-
-
-
-
+    assign mepc_o  = mepc;
+    assign mtvec_o = mtvec;
+    assign trap_o  = trap;
 
     assign PC_next =    trap ? mtvec :
                         mret ? mepc  :
