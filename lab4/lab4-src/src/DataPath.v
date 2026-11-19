@@ -138,10 +138,6 @@ module DataPath(
         .trap      (trap)
     );
 
-    assign mepc_o     = 32'b0;
-    assign mtvec_o    = 32'b0;
-    assign trap_o     = 1'b0;
-
     assign mepc_o  = mepc;
     assign mtvec_o = mtvec;
     assign trap_o  = trap;
